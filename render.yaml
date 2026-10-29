@@ -12,7 +12,7 @@ services:
     rootDir: backend
     plan: free
     buildCommand: pip install uv && uv sync --no-dev
-    startCommand: uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uv run alembic upgrade head && uv run python scripts/run_ingestion.py && uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: APP_ENV
         value: production
@@ -21,6 +21,6 @@ services:
           name: wind-forecast-db
           property: connectionString
       - key: ALLOWED_ORIGINS
-        value: "http://localhost:5173,http://localhost:3000,https://wind-forecast.vercel.app"
+        value: "http://localhost:5173,http://localhost:3000,https://wind-forecast-frontend-bice.vercel.app,https://*.vercel.app"
       - key: INGESTION_TOKEN
         generateValue: true

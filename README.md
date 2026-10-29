@@ -1,18 +1,44 @@
 # UK Wind Forecast & Accuracy Analytics
 
-A web application for an energy utility's day-ahead electricity purchasing team. It fetches national wind generation actuals from Elexon BMRS (`FUELHH`, `fuelType=WIND`) and forecasts from `WINDFOR`, then surfaces MAE, RMSE, and bias metrics to support January 2026 purchasing decisions without look-ahead bias.
+> **Live Web Application (Vercel):** [https://wind-forecast-frontend-bice.vercel.app](https://wind-forecast-frontend-bice.vercel.app)  
+> **Live API & Interactive Swagger UI (Render):** [https://wind-forecast-backend-uemt.onrender.com/docs](https://wind-forecast-backend-uemt.onrender.com/docs)  
+> **API Reference & Collections:** [API.md](API.md) · [OpenAPI Spec](docs/openapi.json) · [Postman Collection](docs/postman_collection.json)
+
+A web application designed for an energy utility's day-ahead electricity purchasing team in the UK. It fetches national wind generation actuals from Elexon BMRS (`FUELHH`, `fuelType=WIND`) and forecasts from `WINDFOR`, then calculates aggregate error metrics (MAE, RMSE, bias) and surfaces aligned intervals for January 2026 purchasing decisions without look-ahead bias.
 
 ---
 
-## Monorepo layout
+## Monorepo layout & files
 
 ```
 wind-forecast/
-├── backend/          # FastAPI + SQLAlchemy + Alembic (Python 3.12, uv)
-├── frontend/         # React + TypeScript + Vite + Tailwind CSS + Recharts
-├── docs/             # Architecture decisions, data dictionaries
-├── docker-compose.yml
-├── .env.example
+├── backend/
+│   ├── alembic/                # Database migrations (PostgreSQL 16)
+│   ├── app/
+│   │   ├── api/v1/             # REST endpoints (health, analysis, explorer, ingest)
+│   │   ├── core/config.py      # App settings & normalizers (Pydantic v2)
+│   │   ├── db/session.py       # SQLAlchemy engine & session factory
+│   │   ├── models/wind.py      # PostgreSQL models (wind_actuals, wind_forecasts)
+│   │   ├── schemas/            # Pydantic response models (analytics, wind, ingestion)
+│   │   └── services/           # Elexon API client, ingestion engine, accuracy math
+│   ├── scripts/                # Standalone ingestion runner (scripts/run_ingestion.py)
+│   ├── Dockerfile              # Python 3.12 container definition
+│   └── pyproject.toml          # Project metadata, dependencies (uv), ruff, pytest
+├── frontend/
+│   ├── src/
+│   │   ├── api/                # Axios API client & TanStack Query services
+│   │   ├── components/         # Reusable UI (Sidebar, TopHeader, KpiCards, ComparisonChart, DataTable)
+│   │   ├── pages/              # Overview, Forecasts, Actuals, Accuracy, Comparison
+│   │   └── lib/format.ts       # UTC date/time and number formatters
+│   ├── vercel.json             # Vercel SPA routing & Render backend reverse proxy
+│   ├── nginx.conf              # Production Nginx reverse-proxy configuration
+│   ├── Dockerfile              # Multi-stage container build
+│   └── package.json            # React 19, Tailwind CSS v4, Recharts, Vite
+├── docs/                       # Architecture decisions, OpenAPI spec, Postman collection
+├── API.md                      # Complete endpoint reference with parameters and curl examples
+├── DEPLOYMENT.md               # Cloud deployment guide (Render + Vercel)
+├── render.yaml                 # Render Blueprint (PostgreSQL 16 + Web Service)
+├── docker-compose.yml          # Multi-container stack (Postgres, FastAPI, Frontend/Nginx)
 └── README.md
 ```
 
@@ -240,3 +266,15 @@ curl -s -X POST http://localhost:8000/api/v1/ingest \
 - [x] **M6.5** – Comparison page: Recharts forecast-vs-actual line chart + interval table
 - [x] **M6.6** – Overview page: compact chart + table preview reusing the comparison components
 - [x] **M6.7** – Comparison page: date-range filter (`delivery_start` / `delivery_end`)
+
+---
+
+## AI Tools Disclosure
+
+As explicitly permitted and encouraged by the assignment specification, AI assistance (Claude Code / Google DeepMind's Antigravity AI coding assistant) was utilized during development for:
+- Architecture design, technical planning, and boilerplate generation.
+- Automated test generation across unit, integration, and E2E suites (107 backend tests).
+- Mathematical modeling of look-ahead bias prevention algorithms and half-hourly to hourly time alignment.
+- Fast debugging and container/cloud deployment configuration for Render and Vercel.
+
+All architectural decisions, market assumptions, data validations, and code implementations were independently reviewed and verified against live Elexon BMRS API data.
