@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1 import health
+from app.api.v1 import analysis, explorer, health, ingest
 from app.core.config import settings
 
 app = FastAPI(
@@ -18,7 +20,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(SQLAlchemyError)
+async def _sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    """Return a consistent 500 for any unhandled database error."""
+    return JSONResponse(status_code=500, content={"detail": "Database error"})
+
+
 app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(ingest.router, prefix="/api/v1", tags=["ingestion"])
+app.include_router(explorer.router, prefix="/api/v1", tags=["data"])
+app.include_router(analysis.router, prefix="/api/v1", tags=["analysis"])
 
 
 @app.get("/")

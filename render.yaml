@@ -1,0 +1,28 @@
+databases:
+  - name: wind-forecast-db
+    databaseName: wind_forecast
+    user: wind
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: wind-forecast-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: oregon
+    buildCommand: pip install uv && uv sync --no-dev
+    preDeployCommand: uv run alembic upgrade head
+    startCommand: uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wind-forecast-db
+          property: connectionString
+      - key: ALLOWED_ORIGINS
+        value: "http://localhost:5173,http://localhost:3000,https://wind-forecast.vercel.app"
+      - key: INGESTION_TOKEN
+        generateValue: true

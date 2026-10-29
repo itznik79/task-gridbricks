@@ -16,6 +16,15 @@ node_modules/
 dist/
 *.local
 
+# Lockfiles (excluded from this submission)
+package-lock.json
+uv.lock
+
+# Tests (excluded from this submission)
+backend/tests/
+frontend/e2e/
+frontend/playwright.config.ts
+
 # Database
 *.db
 *.sqlite3
