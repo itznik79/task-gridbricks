@@ -6,8 +6,8 @@ This document provides a comprehensive API reference for the UK Wind Generation 
 
 ## Interactive Documentation & Collections
 
-- **Interactive Swagger UI:** [`http://localhost:8000/docs`](http://localhost:8000/docs) (or `https://<your-render-url>/docs` in production)
-- **Interactive ReDoc:** [`http://localhost:8000/redoc`](http://localhost:8000/redoc)
+- **Interactive Swagger UI:** [`https://wind-forecast-backend-uemt.onrender.com/docs`](https://wind-forecast-backend-uemt.onrender.com/docs) (local: [`http://localhost:8000/docs`](http://localhost:8000/docs))
+- **Interactive ReDoc:** [`https://wind-forecast-backend-uemt.onrender.com/redoc`](https://wind-forecast-backend-uemt.onrender.com/redoc)
 - **OpenAPI 3.1 JSON Specification:** [`docs/openapi.json`](docs/openapi.json) (Import directly into Swagger Editor, Postman, Insomnia, or Bruno)
 - **Postman Collection v2.1:** [`docs/postman_collection.json`](docs/postman_collection.json) (Pre-configured requests with variables and query parameters)
 
@@ -19,7 +19,7 @@ This document provides a comprehensive API reference for the UK Wind Generation 
 |---|---|
 | **Local Development** | `http://localhost:8000` |
 | **Local Frontend Proxy** | `http://localhost:5173/api/v1` |
-| **Production** | `https://<your-render-service>.onrender.com` |
+| **Production (Live)** | `https://wind-forecast-backend-uemt.onrender.com` |
 
 All application endpoints are prefixed with `/api/v1`.
 

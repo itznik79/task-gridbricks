@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://wind-forecast-backend.onrender.com/api/:path*"
+      "destination": "https://wind-forecast-backend-uemt.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
