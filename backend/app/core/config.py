@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     INGESTION_TOKEN: str = ""
 
     # CORS
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    ALLOWED_ORIGINS: str | list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @field_validator("ALLOWED_ORIGINS")
     @classmethod
     def parse_allowed_origins(cls, v: str | list[str]) -> list[str]:
         """Support comma-separated strings or JSON arrays in environment variables."""
