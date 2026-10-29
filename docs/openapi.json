@@ -1,0 +1,951 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Wind Forecast & Accuracy Analytics API",
+    "description": "UK national wind generation forecasts vs actuals for day-ahead purchasing.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Check",
+        "operationId": "health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health/db": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Db Health Check",
+        "operationId": "db_health_check_api_v1_health_db_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingest": {
+      "post": {
+        "tags": [
+          "ingestion"
+        ],
+        "summary": "Trigger Ingest",
+        "description": "Fetch and store January 2026 FUELHH actuals and WINDFOR forecasts.\n\nRequires the **X-Ingestion-Token** header to match **INGESTION_TOKEN** in .env.\nAn empty or unset INGESTION_TOKEN disables the endpoint.\n\nReturns fetched / inserted / skipped / error counts for both datasets.\nReturns 409 if ingestion is already running.",
+        "operationId": "trigger_ingest_api_v1_ingest_post",
+        "parameters": [
+          {
+            "name": "x-ingestion-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "X-Ingestion-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/actuals": {
+      "get": {
+        "tags": [
+          "data"
+        ],
+        "summary": "Get Actuals",
+        "description": "Half-hourly FUELHH wind actuals for the data explorer.\n\nFiltered by settlement_date in the requested delivery range, ordered by\nstart_time.  Returns an empty page (not an error) when nothing matches.",
+        "operationId": "get_actuals_api_v1_actuals_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "delivery_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "First delivery date, inclusive (UTC).",
+              "default": "2026-01-01",
+              "title": "Delivery Start"
+            },
+            "description": "First delivery date, inclusive (UTC)."
+          },
+          {
+            "name": "delivery_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Last delivery date, inclusive (UTC).",
+              "default": "2026-01-31",
+              "title": "Delivery End"
+            },
+            "description": "Last delivery date, inclusive (UTC)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedActuals"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/forecasts": {
+      "get": {
+        "tags": [
+          "data"
+        ],
+        "summary": "Get Forecasts",
+        "description": "Hourly WINDFOR forecasts, optionally constrained to a decision cutoff.\n\nWithout `cutoff`, all publication versions in the window are returned (the\nraw explorer view).  With `cutoff`, later publications are excluded so the\nresponse reflects only what was knowable at that instant.",
+        "operationId": "get_forecasts_api_v1_forecasts_get",
+        "parameters": [
+          {
+            "name": "cutoff",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "If set, only forecasts published at or before this UTC instant are returned \u2014 enforces look-ahead-bias prevention. ISO 8601; naive values are treated as UTC.",
+              "title": "Cutoff"
+            },
+            "description": "If set, only forecasts published at or before this UTC instant are returned \u2014 enforces look-ahead-bias prevention. ISO 8601; naive values are treated as UTC."
+          },
+          {
+            "name": "latest_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If true (requires cutoff), collapse to the single latest eligible forecast per delivery hour.",
+              "default": false,
+              "title": "Latest Only"
+            },
+            "description": "If true (requires cutoff), collapse to the single latest eligible forecast per delivery hour."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "delivery_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "First delivery date, inclusive (UTC).",
+              "default": "2026-01-01",
+              "title": "Delivery Start"
+            },
+            "description": "First delivery date, inclusive (UTC)."
+          },
+          {
+            "name": "delivery_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Last delivery date, inclusive (UTC).",
+              "default": "2026-01-31",
+              "title": "Delivery End"
+            },
+            "description": "Last delivery date, inclusive (UTC)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedForecasts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/accuracy": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Get Accuracy",
+        "description": "Aggregate MAE / RMSE / bias with sample and missing-data counts.\n\nPer-interval detail is available from GET /analysis/comparison.",
+        "operationId": "get_accuracy_api_v1_analysis_accuracy_get",
+        "parameters": [
+          {
+            "name": "cutoff_hour",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 23,
+              "minimum": 0,
+              "description": "Decision-cutoff hour (UTC) on day D-1.",
+              "default": 11,
+              "title": "Cutoff Hour"
+            },
+            "description": "Decision-cutoff hour (UTC) on day D-1."
+          },
+          {
+            "name": "delivery_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "First delivery date, inclusive (UTC).",
+              "default": "2026-01-01",
+              "title": "Delivery Start"
+            },
+            "description": "First delivery date, inclusive (UTC)."
+          },
+          {
+            "name": "delivery_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Last delivery date, inclusive (UTC).",
+              "default": "2026-01-31",
+              "title": "Delivery End"
+            },
+            "description": "Last delivery date, inclusive (UTC)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccuracySummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/comparison": {
+      "get": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Get Comparison",
+        "description": "Aligned forecast-vs-actual intervals with per-interval errors (paginated).",
+        "operationId": "get_comparison_api_v1_analysis_comparison_get",
+        "parameters": [
+          {
+            "name": "cutoff_hour",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 23,
+              "minimum": 0,
+              "description": "Decision-cutoff hour (UTC) on day D-1.",
+              "default": 11,
+              "title": "Cutoff Hour"
+            },
+            "description": "Decision-cutoff hour (UTC) on day D-1."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "delivery_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "First delivery date, inclusive (UTC).",
+              "default": "2026-01-01",
+              "title": "Delivery Start"
+            },
+            "description": "First delivery date, inclusive (UTC)."
+          },
+          {
+            "name": "delivery_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Last delivery date, inclusive (UTC).",
+              "default": "2026-01-31",
+              "title": "Delivery End"
+            },
+            "description": "Last delivery date, inclusive (UTC)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedComparison"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccuracySummary": {
+        "properties": {
+          "delivery_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery Start"
+          },
+          "delivery_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery End"
+          },
+          "decision_cutoff_hour_utc": {
+            "type": "integer",
+            "title": "Decision Cutoff Hour Utc"
+          },
+          "sample_count": {
+            "type": "integer",
+            "title": "Sample Count"
+          },
+          "paired_count": {
+            "type": "integer",
+            "title": "Paired Count"
+          },
+          "missing_forecast_count": {
+            "type": "integer",
+            "title": "Missing Forecast Count"
+          },
+          "mae_mw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae Mw"
+          },
+          "rmse_mw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse Mw"
+          },
+          "mean_bias_mw": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Bias Mw"
+          },
+          "methodology": {
+            "$ref": "#/components/schemas/Methodology"
+          }
+        },
+        "type": "object",
+        "required": [
+          "delivery_start",
+          "delivery_end",
+          "decision_cutoff_hour_utc",
+          "sample_count",
+          "paired_count",
+          "missing_forecast_count",
+          "mae_mw",
+          "rmse_mw",
+          "mean_bias_mw",
+          "methodology"
+        ],
+        "title": "AccuracySummary",
+        "description": "Aggregate accuracy metrics plus methodology (no per-interval detail)."
+      },
+      "ActualRecord": {
+        "properties": {
+          "settlement_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Settlement Date"
+          },
+          "settlement_period": {
+            "type": "integer",
+            "title": "Settlement Period"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time"
+          },
+          "publish_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Publish Time"
+          },
+          "generation_mw": {
+            "type": "integer",
+            "title": "Generation Mw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "settlement_date",
+          "settlement_period",
+          "start_time",
+          "publish_time",
+          "generation_mw"
+        ],
+        "title": "ActualRecord",
+        "description": "One half-hourly FUELHH wind actual."
+      },
+      "ForecastRecord": {
+        "properties": {
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time"
+          },
+          "publish_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Publish Time"
+          },
+          "generation_mw": {
+            "type": "integer",
+            "title": "Generation Mw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_time",
+          "publish_time",
+          "generation_mw"
+        ],
+        "title": "ForecastRecord",
+        "description": "One hourly WINDFOR forecast value for a given publication."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IngestionResult": {
+        "properties": {
+          "actuals_fetched": {
+            "type": "integer",
+            "title": "Actuals Fetched",
+            "default": 0
+          },
+          "actuals_inserted": {
+            "type": "integer",
+            "title": "Actuals Inserted",
+            "default": 0
+          },
+          "actuals_skipped": {
+            "type": "integer",
+            "title": "Actuals Skipped",
+            "default": 0
+          },
+          "forecasts_fetched": {
+            "type": "integer",
+            "title": "Forecasts Fetched",
+            "default": 0
+          },
+          "forecasts_inserted": {
+            "type": "integer",
+            "title": "Forecasts Inserted",
+            "default": 0
+          },
+          "forecasts_skipped": {
+            "type": "integer",
+            "title": "Forecasts Skipped",
+            "default": 0
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "title": "Duration Seconds",
+            "default": 0.0
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "IngestionResult"
+      },
+      "IntervalError": {
+        "properties": {
+          "settlement_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Settlement Date"
+          },
+          "settlement_period": {
+            "type": "integer",
+            "title": "Settlement Period"
+          },
+          "start_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start Time"
+          },
+          "forecast_publish_time": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Forecast Publish Time"
+          },
+          "actual_mw": {
+            "type": "integer",
+            "title": "Actual Mw"
+          },
+          "forecast_mw": {
+            "type": "integer",
+            "title": "Forecast Mw"
+          },
+          "error_mw": {
+            "type": "integer",
+            "title": "Error Mw"
+          }
+        },
+        "type": "object",
+        "required": [
+          "settlement_date",
+          "settlement_period",
+          "start_time",
+          "forecast_publish_time",
+          "actual_mw",
+          "forecast_mw",
+          "error_mw"
+        ],
+        "title": "IntervalError",
+        "description": "Forecast error for one 30-minute actual settlement period."
+      },
+      "Methodology": {
+        "properties": {
+          "decision_cutoff": {
+            "type": "string",
+            "title": "Decision Cutoff"
+          },
+          "forecast_resolution": {
+            "type": "string",
+            "title": "Forecast Resolution"
+          },
+          "actual_resolution": {
+            "type": "string",
+            "title": "Actual Resolution"
+          },
+          "alignment": {
+            "type": "string",
+            "title": "Alignment"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_cutoff",
+          "forecast_resolution",
+          "actual_resolution",
+          "alignment",
+          "notes"
+        ],
+        "title": "Methodology",
+        "description": "Current analysis assumptions, surfaced in API responses.\n\nThese describe modelling choices, not independently verified market rules."
+      },
+      "PaginatedActuals": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActualRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "PaginatedActuals"
+      },
+      "PaginatedComparison": {
+        "properties": {
+          "delivery_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery Start"
+          },
+          "delivery_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Delivery End"
+          },
+          "decision_cutoff_hour_utc": {
+            "type": "integer",
+            "title": "Decision Cutoff Hour Utc"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "missing_forecast_count": {
+            "type": "integer",
+            "title": "Missing Forecast Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IntervalError"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "delivery_start",
+          "delivery_end",
+          "decision_cutoff_hour_utc",
+          "total",
+          "limit",
+          "offset",
+          "missing_forecast_count",
+          "items"
+        ],
+        "title": "PaginatedComparison",
+        "description": "Paginated aligned forecast-vs-actual intervals with per-interval errors."
+      },
+      "PaginatedForecasts": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "cutoff": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff"
+          },
+          "latest_only": {
+            "type": "boolean",
+            "title": "Latest Only"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ForecastRecord"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "cutoff",
+          "latest_only",
+          "items"
+        ],
+        "title": "PaginatedForecasts"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

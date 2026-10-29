@@ -1,0 +1,223 @@
+{
+  "info": {
+    "name": "UK Wind Forecast & Accuracy Analytics API",
+    "description": "Postman collection for the UK Wind Generation Forecast and Actuals Analytics API (Elexon BMRS data for January 2026 day-ahead purchasing).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "ingestionToken",
+      "value": "your-secret-token",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "health"]
+            },
+            "description": "Returns basic API health status."
+          }
+        },
+        {
+          "name": "Database Connectivity Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health/db",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "health", "db"]
+            },
+            "description": "Verifies active connection to PostgreSQL."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Accuracy Metrics (MAE, RMSE, Bias)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analysis/accuracy?delivery_start=2026-01-01&delivery_end=2026-01-31&cutoff_hour=11",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analysis", "accuracy"],
+              "query": [
+                {
+                  "key": "delivery_start",
+                  "value": "2026-01-01",
+                  "description": "Start of delivery date range (inclusive, YYYY-MM-DD)"
+                },
+                {
+                  "key": "delivery_end",
+                  "value": "2026-01-31",
+                  "description": "End of delivery date range (inclusive, YYYY-MM-DD)"
+                },
+                {
+                  "key": "cutoff_hour",
+                  "value": "11",
+                  "description": "Decision cutoff hour on day D-1 in UTC (0-23, default 11:00 UTC)"
+                }
+              ]
+            },
+            "description": "Computes aggregate MAE, RMSE, and bias across the specified delivery range using forecasts available before the decision cutoff."
+          }
+        },
+        {
+          "name": "Forecast vs Actual Comparison Intervals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/analysis/comparison?delivery_start=2026-01-02&delivery_end=2026-01-02&cutoff_hour=11&limit=48&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "analysis", "comparison"],
+              "query": [
+                {
+                  "key": "delivery_start",
+                  "value": "2026-01-02"
+                },
+                {
+                  "key": "delivery_end",
+                  "value": "2026-01-02"
+                },
+                {
+                  "key": "cutoff_hour",
+                  "value": "11"
+                },
+                {
+                  "key": "limit",
+                  "value": "48"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Returns aligned time intervals comparing actual vs eligible day-ahead forecast with interval error in MW."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data Explorer",
+      "item": [
+        {
+          "name": "Get Wind Actuals (FUELHH)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/actuals?delivery_start=2026-01-01&delivery_end=2026-01-31&limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "actuals"],
+              "query": [
+                {
+                  "key": "delivery_start",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "delivery_end",
+                  "value": "2026-01-31"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Paginated half-hourly national wind generation actuals from Elexon BMRS FUELHH."
+          }
+        },
+        {
+          "name": "Get Wind Forecasts (WINDFOR)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/forecasts?delivery_start=2026-01-02&delivery_end=2026-01-02&cutoff=2026-01-01T11:00:00Z&latest_only=true&limit=50&offset=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "forecasts"],
+              "query": [
+                {
+                  "key": "delivery_start",
+                  "value": "2026-01-02"
+                },
+                {
+                  "key": "delivery_end",
+                  "value": "2026-01-02"
+                },
+                {
+                  "key": "cutoff",
+                  "value": "2026-01-01T11:00:00Z",
+                  "description": "Prevent look-ahead bias: only return forecasts published at or before this timestamp."
+                },
+                {
+                  "key": "latest_only",
+                  "value": "true",
+                  "description": "Only return the single latest forecast per delivery hour eligible before cutoff."
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Paginated hourly national wind generation forecasts from Elexon BMRS WINDFOR."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ingestion",
+      "item": [
+        {
+          "name": "Trigger January 2026 Ingestion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Ingestion-Token",
+                "value": "{{ingestionToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ingest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ingest"]
+            },
+            "description": "Triggers fetching and storing January 2026 FUELHH actuals and WINDFOR forecasts from Elexon BMRS API."
+          }
+        }
+      ]
+    }
+  ]
+}

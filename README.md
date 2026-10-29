@@ -93,8 +93,11 @@ docker compose up --build
 
 ## API endpoints
 
-All under `/api/v1`. Interactive docs at <http://localhost:8000/docs>.
-Full contracts and examples: [`docs/architecture.md`](docs/architecture.md).
+All under `/api/v1`. Interactive Swagger UI at <http://localhost:8000/docs> and ReDoc at <http://localhost:8000/redoc>.
+Comprehensive documentation, query parameters, and cURL examples: [**`API.md`**](API.md).
+Collections for testing:
+- **OpenAPI 3.1 Spec (Swagger):** [`docs/openapi.json`](docs/openapi.json)
+- **Postman Collection v2.1:** [`docs/postman_collection.json`](docs/postman_collection.json)
 
 | Method & path | Purpose |
 |---|---|
@@ -177,9 +180,7 @@ Playwright starts the dev server on port 4321 automatically (no clash with 5173)
 
 ## Deployment (Production)
 
-The application is configured for zero-friction cloud deployment using **Render** and **Vercel**:
-
-- **Backend + Database (Render):** Managed via [`render.yaml`](render.yaml). Provisions PostgreSQL 16 and a Python 3.12 web service. Migrations (`alembic upgrade head`) run automatically before each deploy via `preDeployCommand`. `DATABASE_URL` is automatically normalized from Render's `postgresql://` to `postgresql+psycopg2://`.
+- **Backend + Database (Render):** Managed via [`render.yaml`](render.yaml). Provisions PostgreSQL 16 and a Python 3.12 web service. Migrations (`alembic upgrade head`) run automatically on startup via `startCommand` (compatible with Render's free tier). `DATABASE_URL` is automatically normalized from Render's `postgresql://` to `postgresql+psycopg2://`.
 - **Frontend (Vercel):** Configured via [`frontend/vercel.json`](frontend/vercel.json) with SPA client-side routing and `/api` proxy rewrites to Render, ensuring seamless same-origin API requests without CORS issues.
 
 For step-by-step setup instructions, environment variables, and ingestion procedures, see the comprehensive [**`DEPLOYMENT.md`**](DEPLOYMENT.md) guide.

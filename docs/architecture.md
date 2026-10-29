@@ -494,9 +494,8 @@ Single-page dashboard; navigation is React state (no router).
    `postgresql://` (or `postgres://`) URL. Because only `psycopg2-binary` is installed,
    `app/core/config.py` uses a Pydantic `field_validator` to automatically normalize it to
    `postgresql+psycopg2://` at load time, preventing driver resolution crashes in both the
-   FastAPI app and Alembic migrations.
  - **Render Blueprint (`render.yaml`):** Provisions PostgreSQL 16 and a Python 3.12 service.
-   Runs `uv run alembic upgrade head` as a `preDeployCommand` before the web service goes live.
+   Runs `uv run alembic upgrade head` on startup via `startCommand` (compatible with Render's free tier).
  - **Vercel (`frontend/vercel.json`):** Serves the Vite SPA with client-side fallback to
    `/index.html` and rewrites `/api/*` to the Render backend service, maintaining same-origin
    semantics without CORS configuration.

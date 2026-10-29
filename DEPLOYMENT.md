@@ -30,7 +30,7 @@ This guide covers deploying the **UK Wind Forecast & Accuracy Analytics** applic
 ```
 
 - **Render** hosts the PostgreSQL database and FastAPI service.
-- **Alembic migrations** run automatically during deployment via Render's `preDeployCommand`.
+- **Alembic migrations** run automatically at startup via `startCommand` (`uv run alembic upgrade head && uv run uvicorn ...`), ensuring full compatibility with Render's free tier (which does not support separate `preDeployCommand` hooks).
 - **Vercel** hosts the static frontend build. Requests to `/api/*` are transparently rewritten to the Render backend service via `frontend/vercel.json`, avoiding CORS constraints and maintaining same-origin semantics.
 
 ---
@@ -48,8 +48,7 @@ This guide covers deploying the **UK Wind Forecast & Accuracy Analytics** applic
 5. Click **Apply**.
    - Render provisions the database.
    - Render runs `buildCommand`: `pip install uv && uv sync --no-dev`.
-   - Render runs `preDeployCommand`: `uv run alembic upgrade head` (automatically applying migrations).
-   - Render starts `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+   - Render executes `startCommand`: `uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT` (applying migrations on container startup before serving traffic).
 
 ### Option B: Manual Setup via Render Dashboard
 
@@ -65,8 +64,8 @@ If you prefer configuring resources manually in the Render UI:
    - **Root Directory:** `backend`
    - **Runtime:** `Python`
    - **Build Command:** `pip install uv && uv sync --no-dev`
-   - **Pre-Deploy Command:** `uv run alembic upgrade head`
-   - **Start Command:** `uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Start Command:** `uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+     *(Note: leave Pre-Deploy Command empty, as Render Free Tier does not support it)*
 3. **Environment Variables:**
    - `APP_ENV`: `production`
    - `DATABASE_URL`: Link to your Render database's internal connection string (`postgresql://...`).
